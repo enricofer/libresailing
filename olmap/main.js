@@ -96,6 +96,7 @@ const styles = {
 
 class OverlayHandler {
   constructor(ol2d, ol3d, scene) {
+    this.mobile = screen.width < 400;
     this.ol2d = ol2d;
     this.ol3d = ol3d;
     this.scene = scene;
@@ -152,13 +153,12 @@ class OverlayHandler {
       this.resetFeature()
       return;
     }
-    const cartographic = scene.globe.ellipsoid.cartesianToCartographic(cartesian);
+    const cartographic = this.scene.globe.ellipsoid.cartesianToCartographic(cartesian);
     let coords = [Cesium.Math.toDegrees(cartographic.longitude), Cesium.Math.toDegrees(cartographic.latitude)];
 
-    const height = scene.globe.getHeight(cartographic);
-    if (height) {
-      coords = coords.concat([height]);
-    }
+    let height = this.scene.globe.getHeight(cartographic);
+    height = height>50 ? height : 50;
+    coords = coords.concat([height]);
 
     // const transformedCoords = transform(coords, getProjection('EPSG:4326'), 'EPSG:3857');
     this.setupOverlay()
@@ -170,14 +170,17 @@ class OverlayHandler {
   }
 
   setOverlayContent(overlay, layer, feature) {
+      const me = this;
       const element = overlay.getElement();
       const div = document.createElement('div');
+      const font = mobile ? "4vw" : "1vw";
+      div.style.fontSize = font;
       div.onclick = this.onCloseClick.bind(this);
       const fid = feature.get('BOAT');
       const title = layer.get('name')
       $(element).prop('title', title);
 
-      div.innerHTML = '<div id="props">';
+      div.innerHTML = '';
       const props = feature.getProperties()
       for (const key in props) {
         if (key == 'geometry') continue;
@@ -191,9 +194,7 @@ class OverlayHandler {
             div.innerHTML += `<p>${key}: ${value}</p>`;
         }
       }
-      div.innerHTML += '</div>';
 
-      // div.innerHTML = `BOAT:<code><a src="https://www.libresailing.eu/map/#2/7.4/0.3" target="_blank">${fid}</a></code>`;
       $(element).popover('destroy');
       $(element).popover({
         'placement': 'right',
@@ -202,11 +203,24 @@ class OverlayHandler {
         'content': div
       });
       $(element).popover('show');
-      $(element).find('.popover').each(function(i){
-        i.css('left', '-12.5px')
+      
+      const cc = div.getElementsByTagName("*");
+        for (let i of cc) {
+            console.log("FOR",i);
+            i.style.fontSize = font;
+        }
+
+      $('.popover').each(function(i,obj){
+        // i.css('left', '-12.5px')
+        obj.style.left = '-1px';
       });
-      $(element).find('.arrow').each(function(i){
-        i.css('left', '15px')
+      $('.arrow').each(function(i,obj){
+        // i.css('left', '15px')
+        obj.style.left = '-11px';
+      });
+      $('.popover-title').each(function(i,obj){
+        //obj.attr("style", "font-size:unset; color:red");
+        obj.style.fontSize = font;
       });
 
   }
@@ -232,13 +246,15 @@ class OverlayHandler {
   }
 }
 
+const mobile = screen.width < 400;
+
 const greenStyle = new olStyleStyle({
   fill: new olStyleFill({
     color: [255, 255, 255, 0.6]
   }),
   stroke: new olStyleStroke({
     color: [0, 153, 23, 1],
-    width: 4
+    width: mobile ? 12 : 4
   }),    
   image: new CircleStyle({
     radius: 10,
@@ -254,7 +270,7 @@ const redStyle = new olStyleStyle({
   }),
   stroke: new olStyleStroke({
     color: "#fc5603",
-    width: 2
+    width: mobile ? 6 : 2
   }),    
   image: new CircleStyle({
     radius: 10,
@@ -270,7 +286,7 @@ const selectionStyle = new olStyleStyle({
   }),
   stroke: new olStyleStroke({
     color: [0, 153, 255, 1],
-    width: 5
+    width: mobile ? 12 : 4
   })
 });
 
@@ -298,10 +314,10 @@ const locLayer = new VectorLayer({
             })
         }),
         text: new Text({
-            font: '12px Arial,sans-serif',
+            font: mobile ? '24px Arial,sans-serif' : '12px Arial,sans-serif',
             textBaseline: 'middle',
             text: `${text}`,
-            offsetX: 16,
+            offsetX: mobile ? 32 : 16,
             textAlign: 'left',
             rotation: -0.785398164, //45
             fill: new Fill({
